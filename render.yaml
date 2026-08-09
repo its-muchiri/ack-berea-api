@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: ack-berea-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ENV
+        sync: false
+      - key: CONSUMER_KEY
+        sync: false
+      - key: CONSUMER_SECRET
+        sync: false
+      - key: PASSKEY
+        sync: false
+      - key: SHORTCODE
+        sync: false
+      - key: CALLBACK_URL
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: EMAIL_TO
+        sync: false
