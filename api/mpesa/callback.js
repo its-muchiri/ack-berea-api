@@ -1,9 +1,18 @@
+const getBody = (req) => new Promise((resolve) => {
+  let body = '';
+  req.on('data', (chunk) => { body += chunk; });
+  req.on('end', () => {
+    try { resolve(JSON.parse(body)); } catch { resolve({}); }
+  });
+});
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const callback = req.body.Body?.stkCallback;
+  const body = await getBody(req);
+  const callback = body.Body?.stkCallback;
 
   if (!callback) {
     return res.status(200).json({ ResultCode: 0, ResultDesc: 'No callback data' });

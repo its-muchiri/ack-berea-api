@@ -17,13 +17,21 @@ const sendEmail = async (subject, htmlBody) => {
   });
 };
 
+const getBody = (req) => new Promise((resolve) => {
+  let body = '';
+  req.on('data', (chunk) => { body += chunk; });
+  req.on('end', () => {
+    try { resolve(JSON.parse(body)); } catch { resolve({}); }
+  });
+});
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { type, data } = req.body;
+    const { type, data } = await getBody(req);
 
     if (!type || !data) {
       return res.status(400).json({ error: 'Type and data are required' });

@@ -43,13 +43,21 @@ const generatePassword = (shortcode, passkey) => {
   return { password, timestamp };
 };
 
+const getBody = (req) => new Promise((resolve) => {
+  let body = '';
+  req.on('data', (chunk) => { body += chunk; });
+  req.on('end', () => {
+    try { resolve(JSON.parse(body)); } catch { resolve({}); }
+  });
+});
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { phone, amount, accountReference, description } = req.body;
+    const { phone, amount, accountReference, description } = await getBody(req);
 
     if (!phone || !amount) {
       return res.status(400).json({ error: 'Phone and amount are required' });
