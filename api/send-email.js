@@ -13,8 +13,10 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // ── LOG 1: Function entry ──
-  console.log('[send-email] Function invoked at', new Date().toISOString());
+  // ── LOG 1: Function entry + origin ──
+  const origin = req.headers.origin || req.headers.referer || 'direct';
+  const ua = req.headers['user-agent'] || 'unknown';
+  console.log('[send-email] Invoked at', new Date().toISOString(), '| origin:', origin, '| ua:', ua);
 
   // ── LOG 2: Env var check ──
   const smtpUser = process.env.SMTP_USER;
@@ -40,7 +42,8 @@ module.exports = async (req, res) => {
     }));
     const { type, data } = body;
 
-    console.log('[send-email] Received type:', type);
+    console.log('[send-email] Received type:', type, '| data keys:', data ? Object.keys(data) : 'none');
+    console.log('[send-email] Full body:', JSON.stringify(body).substring(0, 200));
 
     if (!type || !data) {
       return res.status(400).json({ error: 'Type and data are required' });
