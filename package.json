@@ -2,9 +2,9 @@
   "name": "ack-berea-api",
   "version": "1.0.0",
   "description": "ACK Berea Church API - M-Pesa + Email",
-  "main": "api/index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

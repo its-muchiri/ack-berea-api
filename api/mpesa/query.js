@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { sendJson } = require('../lib/response');
 
 const baseURL = process.env.ENV === 'production'
   ? 'https://api.safaricom.co.ke'
@@ -15,13 +16,13 @@ const getAccessToken = async () => {
     `${process.env.CONSUMER_KEY}:${process.env.CONSUMER_SECRET}`
   ).toString('base64');
 
-  const res = await axios.get(
+  const r = await axios.get(
     `${baseURL}/oauth/v1/generate?grant_type=client_credentials`,
     { headers: { Authorization: `Basic ${auth}` } }
   );
 
   tokenCache = {
-    value: res.data.access_token,
+    value: r.data.access_token,
     expiresAt: Date.now() + 3500 * 1000,
   };
 
@@ -39,7 +40,7 @@ const generatePassword = (shortcode, passkey) => {
 
 module.exports = async (req, res) => {
   if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendJson(res, 405, { error: 'Method not allowed' });
   }
 
   try {
@@ -66,9 +67,9 @@ module.exports = async (req, res) => {
       }
     );
 
-    res.json(result.data);
+    sendJson(res, 200, result.data);
   } catch (error) {
     console.error('Query error:', error.response?.data || error.message);
-    res.status(500).json({ error: 'Query failed' });
+    sendJson(res, 500, { error: 'Query failed' });
   }
 };

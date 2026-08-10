@@ -1,4 +1,5 @@
+const { sendJson } = require('./lib/response');
+
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.json({ status: 'ok', env: process.env.ENV || 'development' });
+  sendJson(res, 200, { status: 'ok' });
 };

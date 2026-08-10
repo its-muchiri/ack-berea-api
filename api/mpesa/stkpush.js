@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { sendJson } = require('../lib/response');
 
 const baseURL = process.env.ENV === 'production'
   ? 'https://api.safaricom.co.ke'
@@ -15,13 +16,13 @@ const getAccessToken = async () => {
     `${process.env.CONSUMER_KEY}:${process.env.CONSUMER_SECRET}`
   ).toString('base64');
 
-  const res = await axios.get(
+  const r = await axios.get(
     `${baseURL}/oauth/v1/generate?grant_type=client_credentials`,
     { headers: { Authorization: `Basic ${auth}` } }
   );
 
   tokenCache = {
-    value: res.data.access_token,
+    value: r.data.access_token,
     expiresAt: Date.now() + 3500 * 1000,
   };
 
@@ -49,11 +50,12 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.statusCode = 200;
+    return res.end();
   }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return sendJson(res, 405, { error: 'Method not allowed' });
   }
 
   try {
@@ -65,11 +67,11 @@ module.exports = async (req, res) => {
     const { phone, amount, accountReference, description } = body;
 
     if (!phone || !amount) {
-      return res.status(400).json({ error: 'Phone and amount are required' });
+      return sendJson(res, 400, { error: 'Phone and amount are required' });
     }
 
     if (amount < 1) {
-      return res.status(400).json({ error: 'Amount must be at least KES 1' });
+      return sendJson(res, 400, { error: 'Amount must be at least KES 1' });
     }
 
     const token = await getAccessToken();
@@ -101,7 +103,7 @@ module.exports = async (req, res) => {
       }
     );
 
-    res.json({
+    sendJson(res, 200, {
       message: 'STK Push sent. Check your phone for the M-Pesa prompt.',
       CheckoutRequestID: result.data.CheckoutRequestID,
       MerchantRequestID: result.data.MerchantRequestID,
@@ -109,7 +111,7 @@ module.exports = async (req, res) => {
     });
   } catch (error) {
     console.error('STK Push error:', error.response?.data || error.message);
-    res.status(500).json({
+    sendJson(res, 500, {
       error: 'Failed to initiate payment',
       details: error.response?.data?.errorMessage || error.message,
     });
