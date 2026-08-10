@@ -5,9 +5,5 @@
       "src": "api/**/*.js",
       "use": "@vercel/node"
     }
-  ],
-  "routes": [
-    { "src": "/api/mpesa/query/(.*)", "dest": "/api/mpesa/query.js" },
-    { "src": "/api/(.*)", "dest": "/api/$1.js" }
   ]
 }
