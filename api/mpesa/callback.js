@@ -1,4 +1,9 @@
-const { sendJson } = require('../lib/response');
+const json = (res, status, data) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.statusCode = status;
+  res.end(JSON.stringify(data));
+};
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -6,12 +11,12 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
-    res.statusCode = 200;
+    res.statusCode = 204;
     return res.end();
   }
 
   if (req.method !== 'POST') {
-    return sendJson(res, 405, { error: 'Method not allowed' });
+    return json(res, 405, { error: 'Method not allowed' });
   }
 
   const body = req.body || JSON.parse(await new Promise((resolve) => {
@@ -19,23 +24,27 @@ module.exports = async (req, res) => {
     req.on('data', (chunk) => { data += chunk; });
     req.on('end', () => resolve(data));
   }));
-  const callback = body.Body?.stkCallback;
+  const callback = body.Body && body.Body.stkCallback;
 
   if (!callback) {
-    return sendJson(res, 200, { ResultCode: 0, ResultDesc: 'No callback data' });
+    return json(res, 200, { ResultCode: 0, ResultDesc: 'No callback data' });
   }
 
   const { ResultCode, ResultDesc, CallbackMetadata } = callback;
 
   if (ResultCode === 0) {
-    const items = CallbackMetadata?.Item || [];
-    const mpesaReceipt = items.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-    const amount = items.find(i => i.Name === 'Amount')?.Value;
-    const phoneNumber = items.find(i => i.Name === 'PhoneNumber')?.Value;
-    console.log('Payment received:', { mpesaReceipt, amount, phoneNumber });
+    const items = (CallbackMetadata && CallbackMetadata.Item) || [];
+    const mpesaReceipt = items.find(function (i) { return i.Name === 'MpesaReceiptNumber'; });
+    const amount = items.find(function (i) { return i.Name === 'Amount'; });
+    const phoneNumber = items.find(function (i) { return i.Name === 'PhoneNumber'; });
+    console.log('Payment received:', {
+      mpesaReceipt: mpesaReceipt && mpesaReceipt.Value,
+      amount: amount && amount.Value,
+      phoneNumber: phoneNumber && phoneNumber.Value,
+    });
   } else {
-    console.log('Payment failed:', { ResultCode, ResultDesc });
+    console.log('Payment failed:', { ResultCode: ResultCode, ResultDesc: ResultDesc });
   }
 
-  sendJson(res, 200, { ResultCode: 0, ResultDesc: 'Success' });
+  json(res, 200, { ResultCode: 0, ResultDesc: 'Success' });
 };
