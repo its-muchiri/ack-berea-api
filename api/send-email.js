@@ -1,22 +1,5 @@
 const nodemailer = require('nodemailer');
 
-const emailTransporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-const sendEmail = async (subject, htmlBody) => {
-  await emailTransporter.sendMail({
-    from: `"ACK Berea Website" <${process.env.SMTP_USER}>`,
-    to: process.env.EMAIL_TO || 'ackberea.org@gmail.com',
-    subject,
-    html: htmlBody,
-  });
-};
-
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -30,6 +13,25 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // ── LOG 1: Function entry ──
+  console.log('[send-email] Function invoked at', new Date().toISOString());
+
+  // ── LOG 2: Env var check ──
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const emailTo = process.env.EMAIL_TO;
+  console.log('[send-email] SMTP_USER set:', !!smtpUser, '| length:', smtpUser?.length);
+  console.log('[send-email] SMTP_PASS set:', !!smtpPass, '| length:', smtpPass?.length);
+  console.log('[send-email] EMAIL_TO set:', !!emailTo, '| value:', emailTo);
+
+  if (!smtpUser || !smtpPass) {
+    console.error('[send-email] FATAL: Missing SMTP credentials');
+    return res.status(500).json({
+      error: 'Email configuration missing',
+      details: 'SMTP_USER or SMTP_PASS not set in environment variables',
+    });
+  }
+
   try {
     const body = req.body || JSON.parse(await new Promise((resolve) => {
       let data = '';
@@ -37,6 +39,8 @@ module.exports = async (req, res) => {
       req.on('end', () => resolve(data));
     }));
     const { type, data } = body;
+
+    console.log('[send-email] Received type:', type);
 
     if (!type || !data) {
       return res.status(400).json({ error: 'Type and data are required' });
@@ -78,7 +82,7 @@ module.exports = async (req, res) => {
         break;
 
       case 'contact':
-        subject = `Contact Form: ${data.subject} — ACK Berea`;
+        subject = `Contact Form: ${data.subject || 'No Subject'} — ACK Berea`;
         htmlBody = `
           <h2>New Contact Message</h2>
           <p><strong>Name:</strong> ${data.name}</p>
@@ -102,10 +106,66 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Unknown email type' });
     }
 
-    await sendEmail(subject, htmlBody);
-    res.json({ message: 'Email sent successfully' });
+    // ── LOG 3: Create transporter ──
+    console.log('[send-email] Creating transporter...');
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpUser,
+        pass: smtpPass.replace(/\s/g, ''), // strip any spaces
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+    });
+
+    // ── LOG 4: Verify connection ──
+    console.log('[send-email] Verifying SMTP connection...');
+    try {
+      await transporter.verify();
+      console.log('[send-email] SMTP connection verified OK');
+    } catch (verifyErr) {
+      console.error('[send-email] SMTP verification FAILED:', {
+        message: verifyErr.message,
+        code: verifyErr.code,
+        command: verifyErr.command,
+        response: verifyErr.response,
+      });
+      return res.status(500).json({
+        error: 'SMTP connection failed',
+        details: verifyErr.message,
+        code: verifyErr.code,
+      });
+    }
+
+    // ── LOG 5: Send email ──
+    const to = emailTo || 'ackberea.org@gmail.com';
+    console.log('[send-email] Sending to:', to, '| from:', smtpUser, '| subject:', subject);
+    const info = await transporter.sendMail({
+      from: `"ACK Berea Website" <${smtpUser}>`,
+      to,
+      subject,
+      html: htmlBody,
+    });
+
+    // ── LOG 6: Success ──
+    console.log('[send-email] Email sent successfully:', {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+    });
+
+    res.json({ message: 'Email sent successfully', messageId: info.messageId });
   } catch (error) {
-    console.error('Email error:', error.message);
+    // ── LOG 7: Full error ──
+    console.error('[send-email] FAILED:', {
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      stack: error.stack,
+    });
     res.status(500).json({ error: 'Failed to send email', details: error.message });
   }
 };
