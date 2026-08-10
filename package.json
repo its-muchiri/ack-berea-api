@@ -2,12 +2,13 @@
   "name": "ack-berea-api",
   "version": "1.0.0",
   "description": "ACK Berea Church API - M-Pesa + Email",
-  "main": "server.js",
+  "private": true,
   "scripts": {
-    "start": "node server.js"
+    "dev": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
+    "dotenv": "^16.4.5",
     "nodemailer": "^6.10.1"
   }
 }
